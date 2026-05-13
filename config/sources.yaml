@@ -1,0 +1,255 @@
+# Intervention Signal System - Unified Configuration
+# RSS feeds and API endpoints for military/geopolitical event monitoring
+
+# ========================================
+# RSS FEEDS (Working Sources)
+# ========================================
+
+bbc_world:
+  name: "BBC World News"
+  type: "rss"
+  url: "https://feeds.bbci.co.uk/news/world/rss.xml"
+  update_interval: 300  # 5 minutes
+  priority: "critical"
+  keywords:
+    - "military operation"
+    - "deployment"
+    - "strike"
+    - "exercise"
+    - "escalation"
+    - "conflict"
+    - "defense"
+    - "airstrike"
+    - "attack"
+    - "war"
+
+aljazeera_world:
+  name: "Al Jazeera World"
+  type: "rss"
+  url: "https://www.aljazeera.com/xml/rss/all.xml"
+  update_interval: 300  # 5 minutes
+  priority: "critical"
+  keywords:
+    - "military operation"
+    - "deployment"
+    - "strike"
+    - "exercise"
+    - "escalation"
+    - "conflict"
+    - "defense"
+    - "airstrike"
+    - "clashes"
+    - "fired"
+    - "explosion"
+    - "artillery"
+
+# ========================================
+# API SOURCES - Military/Geopolitical
+# ========================================
+
+gdelt_events:
+  name: "GDELT Event Database"
+  type: "api"
+  url: "https://api.gdeltproject.org/api/v2/doc/doc"
+  update_interval: 600  # 10 minutes
+  priority: "critical"
+  params:
+    query: "(conflict OR military OR attack OR strike OR escalation) AND (last24h)"
+    format: "json"
+  event_codes:
+    - "18"  # Military Engagement
+    - "19"  # Violence Against Civilians
+    - "20"  # Rearmed
+    - "190" # Use of unconventional mass violence
+
+adsb_exchange:
+  name: "ADS-B Exchange Military"
+  type: "api"
+  url: "https://api.adsbexchange.com/public-beta/military"
+  update_interval: 120  # 2 minutes
+  priority: "high"
+  aircraft_types:
+    - "B-52"  # Strategic bomber
+    - "B-1B"  # Strategic bomber
+    - "B-2"   # Stealth bomber
+    - "F-22"  # Stealth fighter
+    - "F-35"  # Stealth fighter
+    - "A-10"  # Close air support
+    - "C-130" # Transport
+    - "KC-135" # Refueling
+    - "E-3"   # AWACS
+  alert_conditions:
+    abnormal_deployments: true
+    unusual_flight_paths: true
+    formation_flying: true
+
+# ========================================
+# API SOURCES - OSINT Infrastructure
+# ========================================
+
+nasa_firms:
+  name: "NASA FIRMS Fire Detection"
+  type: "api"
+  url: "https://firms.modaps.eosdis.nasa.gov/api/"
+  update_interval: 600  # 10 minutes
+  priority: "critical"
+  # NASA FIRMS requires EDL (Earthdata Login) credentials
+  # Register at: https://urs.earthdata.nasa.gov/
+  # Format: email:password
+  username: ""  # Your EDL email
+  password: ""  # Your EDL password
+  map_key: "cd8f5ae313747580f4d3615536f46015"  # From FIRMS website
+  satellite_source: "MODIS_NRT"  # Options: MODIS_NRT, VIIRS_NOAA20_NRT, VIIRS_SNPP_NRT
+  confidence_threshold: 75  # 0-100%
+  max_fire_age_hours: 24
+  keywords:
+    - "fire"
+    - "thermal"
+    - "anomaly"
+    - "refinery"
+    - "pipeline"
+    - "explosion"
+    - "blaze"
+    - "burning"
+  custom_sites: {}  # Add custom infrastructure sites here if needed
+
+acled:
+  name: "ACLED Conflict Data"
+  type: "api"
+  url: "https://api.acleddata.com/api/acled/read/"
+  update_interval: 600  # 10 minutes
+  priority: "high"
+  # ACLED uses OAuth authentication (username + password)
+  # Login at: https://acleddata.com/
+  # The system automatically gets OAuth tokens and refreshes them
+  username: ""  # Your ACLED email
+  password: ""  # Your ACLED password
+  api_version: "2.0"
+  lookback_days: 3
+  fatalities_threshold: 5
+  include_all_events: false
+  keywords:
+    - "conflict"
+    - "attack"
+    - "military"
+    - "violence"
+    - "escalation"
+    - "insurgency"
+    - "terrorism"
+    - "rebellion"
+
+ais_maritime:
+  name: "AIS Maritime Tracking"
+  type: "api"
+  url: "https://api.marinetraffic.com/api/"
+  update_interval: 300  # 5 minutes
+  priority: "high"
+  api_key: ""  # Requires subscription: https://www.marinetraffic.com/en/ais-api-services
+  api_provider: "marinetraffic"  # Options: marinetraffic, shiplocator
+  simulated_mode: true  # Set to false when using real API
+  history_window_hours: 24
+  chokepoints:
+    - "strait_of_hormuz"
+    - "bab_el_mandeb"
+    - "suez_canal"
+  keywords:
+    - "tanker"
+    - "stopped"
+    - "congestion"
+    - "military"
+    - "naval"
+    - "chokepoint"
+
+# ========================================
+# SIGNAL GENERATION CONFIG
+# ========================================
+
+signal_thresholds:
+  keyword_match_score: 0.7
+  multiple_sources_bonus: 0.2
+  priority_weight:
+    critical: 1.0
+    high: 0.8
+    medium: 0.6
+    low: 0.4
+  alert_threshold: 0.8
+  time_window_minutes: 60
+
+# OSINT Signal Boosters (added confidence when OSINT data corroborates events)
+osint_boosters:
+  thermal_anomaly:
+    description: "Fire/thermal anomaly at infrastructure"
+    bonus: 0.3
+    thresholds:
+      high: "FRP > 500 MW"
+      medium: "FRP 250-500 MW"
+      low: "FRP < 250 MW"
+  
+  conflict_fatalities:
+    description: "High fatality count in energy-critical region"
+    bonus: 0.3
+    thresholds:
+      high: "10+ deaths"
+      medium: "5-10 deaths"
+      low: "1-5 deaths"
+  
+  military_vessel:
+    description: "Military vessel in strategic chokepoint"
+    bonus: 0.4
+  
+  stopped_tanker:
+    description: "Oil tanker stopped for extended period"
+    bonus: 0.3
+    thresholds:
+      long: "1+ hour"
+      short: "< 1 hour"
+  
+  chokepoint_criticality:
+    description: "Event in highly critical chokepoint"
+    bonus: 0.2
+    critical_chokepoints:
+      - "strait_of_hormuz"
+      - "bab_el_mandeb"
+      - "bosphorus"
+
+# ========================================
+# NOTIFICATION CONFIG
+# ========================================
+
+notification:
+  enabled: false  # Set to true when webhook/telegram is configured
+  telegram_bot_token: ""  # From @BotFather
+  telegram_chat_id: ""     # Your chat ID
+  webhook_url: ""         # Alternative webhook endpoint
+  
+  alert_levels:
+    critical: 0.9
+    high: 0.7
+    medium: 0.5
+    low: 0.3
+
+# ========================================
+# PREDICTION MARKET INTEGRATION
+# ========================================
+
+prediction_markets:
+  enabled: true
+  update_interval: 300  # 5 minutes
+  
+  platforms:
+    polymarket:
+      enabled: true
+      api_url: "https://api.polymarket.com"
+      
+    manifold:
+      enabled: true
+      api_url: "https://api.manifold.markets/v0"
+  
+  correlation:
+    min_relevance_score: 0.5
+    max_markets_per_event: 10
+  
+  arbitrage:
+    enabled: true
+    min_spread: 0.05  # 5% minimum spread
+    min_confidence: 0.7
